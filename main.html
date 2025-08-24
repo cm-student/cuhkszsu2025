@@ -184,6 +184,8 @@
       const data = localStorage.getItem('su_photo_dataurl') || window.DEFAULT_PHOTO;
       const img = document.getElementById('avatar-img');
       if(img){ img.src = data; }
+      // 进入 main 后清理 login 缓存，避免残留
+      try{ localStorage.removeItem('su_photo_dataurl'); }catch(e){}
     })();
     // 等比缩放：在 9:16~9:21 的竖屏上保持“视觉大小”一致
     function fitStage(){

@@ -136,10 +136,6 @@
                 <img id="photo-preview" alt="预览" />
               </div>
             </div>
-            <div class="cam-ctrl hidden">
-              <button type="button" id="btn-capture" class="btn-mini">拍照</button>
-              <button type="button" id="btn-closecam" class="btn-mini">关闭相机</button>
-            </div>
             <canvas id="photo-canvas" class="hidden"></canvas>
             <div class="btn-wrap">
               <button class="btn" type="submit">生成工作证</button>
@@ -158,12 +154,9 @@
       const previewImg = document.getElementById('photo-preview');
       const video = document.getElementById('camera');
       const canvas = document.getElementById('photo-canvas');
-      const btnCapture = document.getElementById('btn-capture');
-      const btnCloseCam = document.getElementById('btn-closecam');
       const uploadTab = document.querySelector('.switch .tab[data-mode="upload"]');
       const cameraTab = document.querySelector('.switch .tab[data-mode="camera"]');
       const fileField = document.querySelector('.field.file');
-      const camCtrl = document.querySelector('.cam-ctrl');
       let stream = null;
       let currentMode = 'upload';
       // 两页共享的默认头像（3:4 占位 SVG）
@@ -175,17 +168,14 @@
       async function startCamera(){}
 
       function setMode(mode){
-        if(!uploadTab || !cameraTab || !camCtrl) return;
-        // 始终隐藏站内相机预览（不再使用 getUserMedia）
+        if(!uploadTab || !cameraTab) return;
         if(video){ video.classList.add('hidden'); }
         if(mode === 'camera'){
           uploadTab.classList.remove('active');
           cameraTab.classList.add('active');
-          camCtrl.classList.remove('hidden');
         }else{
           uploadTab.classList.add('active');
           cameraTab.classList.remove('active');
-          camCtrl.classList.add('hidden');
         }
         currentMode = mode;
       }
@@ -196,12 +186,19 @@
           if(currentMode !== 'upload'){
             setMode('upload');
           }else if(fileInput){
-            // 确保上传模式下不强制调用相机
             fileInput.removeAttribute('capture');
             fileInput.click();
           }
         });
-        cameraTab.addEventListener('click', ()=>setMode('camera'));
+        cameraTab.addEventListener('click', ()=>{
+          // 直接调起系统相机
+          if(!fileInput) return;
+          fileInput.setAttribute('capture', 'environment');
+          try{ fileInput.value = ''; }catch(e){}
+          fileInput.click();
+          // 点击后仍保持“上传”为激活态，避免出现站内相机 UI
+          setMode('upload');
+        });
       }
       setMode('upload');
 
@@ -235,20 +232,6 @@
             fileInput.click();
           }
         });
-      }
-
-      // 拍照按钮
-      if(btnCapture){
-        btnCapture.addEventListener('click', ()=>{
-          if(!fileInput) return;
-          // 调用系统相机：启用 capture 并触发点击
-          fileInput.setAttribute('capture', 'environment');
-          try{ fileInput.value = ''; }catch(e){}
-          fileInput.click();
-        });
-      }
-      if(btnCloseCam){
-        btnCloseCam.addEventListener('click', ()=> setMode('upload'));
       }
 
       // 恢复缓存（或默认占位）
