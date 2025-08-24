@@ -123,7 +123,7 @@
             <div class="row">
               <strong>上传照片</strong>
               <div class="field file">
-                <input class="input" type="file" id="photo" name="photo" accept="image/*" capture="environment" />
+                <input class="input" type="file" id="photo" name="photo" accept="image/*" />
               </div>
               <div class="switch" role="tablist" aria-label="选择方式">
                 <button type="button" class="tab active" data-mode="upload">上传</button>
@@ -171,42 +171,21 @@
 
       if(!fileInput || !previewImg) return;
 
-      function stopCamera(){
-        if(stream){
-          stream.getTracks().forEach(t=>t.stop());
-          stream = null;
-        }
-      }
-      async function startCamera(){
-        try{
-          if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-            throw new Error('当前设备或浏览器不支持相机');
-          }
-          stream = await navigator.mediaDevices.getUserMedia({
-            video:{ facingMode:{ ideal:'environment' } },
-            audio:false
-          });
-          video.srcObject = stream;
-          await video.play();
-        }catch(e){
-          alert('无法开启相机：' + e.message + '\n请改用“上传”。');
-          setMode('upload');
-        }
-      }
+      function stopCamera(){}
+      async function startCamera(){}
+
       function setMode(mode){
-        if(!uploadTab || !cameraTab || !video || !camCtrl) return;
+        if(!uploadTab || !cameraTab || !camCtrl) return;
+        // 始终隐藏站内相机预览（不再使用 getUserMedia）
+        if(video){ video.classList.add('hidden'); }
         if(mode === 'camera'){
           uploadTab.classList.remove('active');
           cameraTab.classList.add('active');
-          video.classList.remove('hidden');
           camCtrl.classList.remove('hidden');
-          startCamera();
         }else{
           uploadTab.classList.add('active');
           cameraTab.classList.remove('active');
           camCtrl.classList.add('hidden');
-          video.classList.add('hidden');
-          stopCamera();
         }
         currentMode = mode;
       }
@@ -217,6 +196,8 @@
           if(currentMode !== 'upload'){
             setMode('upload');
           }else if(fileInput){
+            // 确保上传模式下不强制调用相机
+            fileInput.removeAttribute('capture');
             fileInput.click();
           }
         });
@@ -238,6 +219,9 @@
           previewImg.src = reader.result;
           previewImg.style.display = 'block';
           try{ localStorage.setItem('su_photo_dataurl', reader.result); }catch(e){}
+          setMode('upload');
+          // 移除相机捕获属性，避免下次“上传”仍强制调用相机
+          fileInput.removeAttribute('capture');
         };
         reader.readAsDataURL(file);
       });
@@ -246,36 +230,21 @@
       const previewBox = document.querySelector('.preview .box');
       if(previewBox){
         previewBox.addEventListener('click', ()=>{
-          if(currentMode === 'upload' && fileInput){ fileInput.click(); }
+          if(currentMode === 'upload' && fileInput){
+            fileInput.removeAttribute('capture');
+            fileInput.click();
+          }
         });
       }
 
       // 拍照按钮
       if(btnCapture){
         btnCapture.addEventListener('click', ()=>{
-          if(!video || !canvas) return;
-          const vw = video.videoWidth, vh = video.videoHeight;
-          if(!vw || !vh) return;
-          const target = 3/4; // w:h
-          const vr = vw/vh;
-          let sx=0, sy=0, sw=vw, sh=vh;
-          if(vr > target){
-            // 裁左右
-            sh = vh; sw = Math.floor(vh*target);
-            sx = Math.floor((vw - sw)/2); sy = 0;
-          }else{
-            // 裁上下
-            sw = vw; sh = Math.floor(vw/target);
-            sx = 0; sy = Math.floor((vh - sh)/2);
-          }
-          canvas.width = 300; canvas.height = 400; // 输出 3:4
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-          const data = canvas.toDataURL('image/jpeg', 0.92);
-          previewImg.src = data;
-          previewImg.style.display = 'block';
-          try{ localStorage.setItem('su_photo_dataurl', data); }catch(e){}
-          setMode('upload'); // 拍完回到上传模式，关闭相机
+          if(!fileInput) return;
+          // 调用系统相机：启用 capture 并触发点击
+          fileInput.setAttribute('capture', 'environment');
+          try{ fileInput.value = ''; }catch(e){}
+          fileInput.click();
         });
       }
       if(btnCloseCam){
